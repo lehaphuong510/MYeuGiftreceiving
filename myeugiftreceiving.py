@@ -22,7 +22,7 @@ def get_credentials():
 SHEET_ID = "1ce2iU7qzr9PUoGMorlIaNMYb3KDGizmhiIRquWN8dOE"
 
 # DÁN CÁI LINK WEB APP CỦA GOOGLE APPS SCRIPT VÀO ĐÂY NHA:
-LINK_WEB_APP = "https://script.google.com/macros/s/AKfycbwLjSkMD-1tufo1nJ_Ec_tZ9NMCBQdR1pEp-xBDvfnqVEtMHlO4fW27YeLILjOLpqxT/exec"
+LINK_WEB_APP = "https://script.google.com/macros/s/AKfycbw-3bA7lerOMn8anUNs87onotPwcIawgG7660GOVQCi6FhqeKz-7FqyixdvUDX5Z6JA/exec"
 
 # --- HÀM UPLOAD ẢNH LÊN GOOGLE DRIVE (QUA APPS SCRIPT) ---
 def upload_image_to_gdrive_script(image_bytes, filename):
