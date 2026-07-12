@@ -5,7 +5,7 @@ import base64
 import io
 from PIL import Image
 from google.oauth2.service_account import Credentials
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # --- KẾT NỐI GOOGLE SHEETS TỪ SECRETS ---
 @st.cache_resource
@@ -155,7 +155,8 @@ else:
 
                     if img_url:
                         # 3. Bắn data vào Google Sheets
-                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        # Lấy giờ quốc tế (utcnow) cộng thêm 7 tiếng ra giờ Việt Nam
+                        timestamp = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
 
                         creds = get_credentials()
                         client = gspread.authorize(creds)
