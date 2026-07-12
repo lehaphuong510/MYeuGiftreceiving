@@ -1,61 +1,50 @@
 import streamlit as st
 import gspread
+import requests
+import base64
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-import io
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 
-# --- KẾT NỐI GOOGLE CLOUD TỪ SECRETS ---
+# --- KẾT NỐI GOOGLE SHEETS TỪ SECRETS ---
 @st.cache_resource
 def get_credentials():
     creds_dict = st.secrets["gcp_service_account"]
     creds = Credentials.from_service_account_info(
         creds_dict,
-        scopes=[
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
+        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     )
     return creds
 
-# ID CỦA SHEETS VÀ FOLDER DRIVE
 SHEET_ID = "1ce2iU7qzr9PUoGMorlIaNMYb3KDGizmhiIRquWN8dOE"
-FOLDER_ID = "1ue0GEah5v-YRwFlciQ54UBpfrXDI0eeC"
 
-# --- HÀM UPLOAD ẢNH LÊN GOOGLE DRIVE ---
-def upload_image_to_gdrive(image_bytes, filename):
+# DÁN CÁI LINK WEB APP CỦA GOOGLE APPS SCRIPT VÀO ĐÂY NHA:
+LINK_WEB_APP = "https://script.google.com/macros/s/AKfycbwLjSkMD-1tufo1nJ_Ec_tZ9NMCBQdR1pEp-xBDvfnqVEtMHlO4fW27YeLILjOLpqxT/exec"
+
+# --- HÀM UPLOAD ẢNH BẰNG GOOGLE APPS SCRIPT ---
+def upload_image_to_gdrive_script(image_bytes, filename):
     try:
-        creds = get_credentials()
-        drive_service = build('drive', 'v3', credentials=creds)
-        
-        file_metadata = {
-            'name': filename,
-            'parents': [FOLDER_ID]
+        # Chuyển hình thành chuỗi mã hóa để bắn qua mạng dễ dàng
+        encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+        payload = {
+            "fileData": encoded_image,
+            "contentType": "image/jpeg",
+            "filename": filename
         }
-        media = MediaIoBaseUpload(io.BytesIO(image_bytes), mimetype='image/jpeg', resumable=True)
+        # Bắn dữ liệu đi
+        response = requests.post(LINK_WEB_APP, data=payload)
+        result = response.text
         
-        # Upload file lên Drive
-        file = drive_service.files().create(
-            body=file_metadata, 
-            media_body=media, 
-            fields='id, webViewLink'
-        ).execute()
-        
-        file_id = file.get('id')
-        
-        # Cấp quyền cho ai có link cũng xem được
-        drive_service.permissions().create(
-            fileId=file_id,
-            body={'type': 'anyone', 'role': 'reader'}
-        ).execute()
-        
-        return file.get('webViewLink')
+        # Nếu link trả về có chữ http nghĩa là thành công
+        if result.startswith("http"):
+            return result
+        else:
+            print("Lỗi từ Google Script:", result)
+            return None
     except Exception as e:
-        st.error(f"Lỗi khi up Drive: {e}")
+        print(f"Lỗi hệ thống: {e}")
         return None
 
-# --- CACHE & STATE QUẢN LÝ ĐĂNG NHẬP ---
+# --- CACHE & STATE ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 if 'staff_name' not in st.session_state:
@@ -65,36 +54,15 @@ if 'staff_name' not in st.session_state:
 st.set_page_config(page_title="Ghi Nhận Quà Sự Kiện", page_icon="🌻", layout="centered")
 
 css = """
-<style>
-    @media max-width: 768px {
-        .main-title { font-size: 24px !important; line-height: 1.3 !important; white-space: nowrap !important; }
-    }
-    .main-title {
-        background: linear-gradient(to right, #8B0000, #CC7722, #FFB300);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: left; font-size: 32px; font-weight: bold; margin-bottom: 20px;
-    }
-    .question-text {
-        background: linear-gradient(to right, #D81B60, #8E24AA);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 18px; font-weight: 600; margin-bottom: 10px;
-    }
-    .stButton > button[kind="primary"] {
-        background: linear-gradient(to right, #D81B60, #8E24AA) !important;
-        color: white !important; border: none !important;
-    }
-</style>
+
 """
 st.markdown(css, unsafe_allow_html=True)
 
 # --- MÀN HÌNH ĐĂNG NHẬP ---
 if not st.session_state['logged_in']:
-    st.markdown('<div class="main-title">HỆ THỐNG GHI NHẬN<br>NHẬN QUÀ MYÊU SHOW</div>', unsafe_allow_html=True)
+    st.markdown('HỆ THỐNG GHI NHẬNNHẬN QUÀ TẶNG MYÊU SHOW', unsafe_allow_html=True)
     password = st.text_input("Vui lòng nhập mã truy cập của bạn:", type="password")
 
-    # M tạo 1 danh sách các pass hợp lệ ở đây
     danh_sach_pass_hop_le = {
         "PassCuaAn2026": "An",
         "TrangNhanQua!": "Trang",
@@ -102,16 +70,14 @@ if not st.session_state['logged_in']:
     }
 
     if st.button("Vào hệ thống", type="primary"):
-        # Kiểm tra xem pass nhập vào có nằm trong danh sách không
         if password in danh_sach_pass_hop_le:
-            # Lấy tên staff tương ứng với pass đó
             st.session_state['staff_name'] = danh_sach_pass_hop_le[password]
             st.session_state['logged_in'] = True
             st.rerun()
         else:
             st.error("Sai password rồi nha!")
 
-# --- MÀN HÌNH CHÍNH (SAU KHI ĐĂNG NHẬP) ---
+# --- MÀN HÌNH CHÍNH ---
 else:
     col1, col2 = st.columns([8, 2])
     with col2:
@@ -120,11 +86,11 @@ else:
             st.session_state['staff_name'] = ""
             st.rerun()
 
-    st.markdown('<div class="main-title">NHẬN QUÀ TỪ 🌻MYÊU🌻</div>', unsafe_allow_html=True)
+    st.markdown('NHẬN QUÀ TỪ 🌻MYÊU🌻', unsafe_allow_html=True)
     st.write(f"Đang trực hệ thống: **{st.session_state['staff_name']}**")
     st.divider()
 
-    st.markdown('<div class="question-text">Mình xin số ghế của bạn nha</div>', unsafe_allow_html=True)
+    st.markdown('Mình xin số ghế của bạn nha', unsafe_allow_html=True)
     seat_num = st.text_input("Nhập số ghế (VD: C6)")
     photo = st.camera_input("Chụp lại tấm hình")
 
@@ -134,28 +100,23 @@ else:
         elif photo is None:
             st.warning("Vui lòng chụp lại hình làm chứng minh nha!")
         else:
-            # Hiển thị loading spinner cho staff biết hệ thống đang xử lý
             with st.spinner("Đang lưu dữ liệu lên hệ thống..."):
                 try:
-                    # 1. Đặt tên hình trùng với số ghế (VD: C6.jpg)
                     file_name = f"{seat_num.upper()}.jpg"
 
-                    # 2. Bắn hình lên Google Drive lấy link
-                    img_url = upload_image_to_gdrive(photo.getvalue(), file_name)
+                    # 1. Bắn hình lên Drive qua link Apps Script
+                    img_url = upload_image_to_gdrive_script(photo.getvalue(), file_name)
 
                     if img_url:
-                        # 3. Bắn data vào Google Sheets
+                        # 2. Ghi data vào Google Sheets
                         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
                         creds = get_credentials()
                         client = gspread.authorize(creds)
                         sheet = client.open_by_key(SHEET_ID).worksheet("Sheet1")
-
-                        # Dùng append_row để thêm 1 dòng mới tinh
                         sheet.append_row([timestamp, st.session_state['staff_name'], seat_num.upper(), img_url])
 
                         st.success(f"🎉 Hệ thống đã ghi nhận thành công cho ghế {seat_num.upper()}!")
                     else:
-                        st.error("Lỗi khi tải hình ảnh lên server. Vui lòng thử lại!")
+                        st.error("Lỗi khi up hình lên Drive. Có thể do nghẽn mạng, m thử lại xíu nha!")
                 except Exception as e:
-                    st.error(f"Có lỗi xảy ra: {e}")
+                    st.error(f"Lỗi: {e}")
