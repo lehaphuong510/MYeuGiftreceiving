@@ -120,7 +120,7 @@ else:
             st.session_state['staff_name'] = ""
             st.rerun()
 
-    st.markdown('<div class="main-title">NHẬN QUÀ ANH THIÊN MINH<br>TỪ 🌻🤍 MYÊU 🤍🌻</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">NHẬN QUÀ TỪ 🌻MYÊU🌻</div>', unsafe_allow_html=True)
     st.write(f"Đang trực hệ thống: **{st.session_state['staff_name']}**")
     st.divider()
 
