@@ -119,7 +119,9 @@ else:
 
     st.markdown('<div class="question-text">Mình xin số ghế của bạn nha</div>', unsafe_allow_html=True)
     seat_num = st.text_input("Nhập số ghế (VD: C6)")
-    photo = st.camera_input("Chụp lại tấm hình")
+    
+    # Dùng file_uploader nhưng ép chỉ nhận hình ảnh, trên đt sẽ tự gợi ý bật Camera
+    photo = st.file_uploader("Chụp hoặc tải ảnh lên", type=['png', 'jpg', 'jpeg'], accept_multiple_files=False)
 
     if st.button("Đã nhận quà", type="primary"):
         if not seat_num:
