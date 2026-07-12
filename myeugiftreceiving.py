@@ -52,7 +52,7 @@ def upload_image_to_gdrive(image_bytes, filename):
         
         return file.get('webViewLink')
     except Exception as e:
-        print(f"Lỗi khi up Drive: {e}")
+        st.error(f"Lỗi khi up Drive: {e}")
         return None
 
 # --- CACHE & STATE QUẢN LÝ ĐĂNG NHẬP ---
