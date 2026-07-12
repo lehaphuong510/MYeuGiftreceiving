@@ -11,40 +11,44 @@ def get_credentials():
     creds_dict = st.secrets["gcp_service_account"]
     creds = Credentials.from_service_account_info(
         creds_dict,
-        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
     )
     return creds
 
+# ID CỦA SHEETS VÀ LINK WEB APP CỦA DRIVE
 SHEET_ID = "1ce2iU7qzr9PUoGMorlIaNMYb3KDGizmhiIRquWN8dOE"
 
 # DÁN CÁI LINK WEB APP CỦA GOOGLE APPS SCRIPT VÀO ĐÂY NHA:
 LINK_WEB_APP = "https://script.google.com/macros/s/AKfycbwLjSkMD-1tufo1nJ_Ec_tZ9NMCBQdR1pEp-xBDvfnqVEtMHlO4fW27YeLILjOLpqxT/exec"
 
-# --- HÀM UPLOAD ẢNH BẰNG GOOGLE APPS SCRIPT ---
+# --- HÀM UPLOAD ẢNH LÊN GOOGLE DRIVE (QUA APPS SCRIPT) ---
 def upload_image_to_gdrive_script(image_bytes, filename):
     try:
-        # Chuyển hình thành chuỗi mã hóa để bắn qua mạng dễ dàng
+        # Chuyển hình thành chuỗi mã hóa để bắn qua mạng
         encoded_image = base64.b64encode(image_bytes).decode('utf-8')
         payload = {
             "fileData": encoded_image,
             "contentType": "image/jpeg",
             "filename": filename
         }
-        # Bắn dữ liệu đi
+        # Bắn dữ liệu lên link script
         response = requests.post(LINK_WEB_APP, data=payload)
         result = response.text
         
-        # Nếu link trả về có chữ http nghĩa là thành công
+        # Nếu kết quả trả về có chứa link http nghĩa là up thành công
         if result.startswith("http"):
             return result
         else:
-            print("Lỗi từ Google Script:", result)
+            st.error(f"Lỗi từ Google Script: {result}")
             return None
     except Exception as e:
-        print(f"Lỗi hệ thống: {e}")
+        st.error(f"Lỗi hệ thống khi up hình: {e}")
         return None
 
-# --- CACHE & STATE ---
+# --- CACHE & STATE QUẢN LÝ ĐĂNG NHẬP ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 if 'staff_name' not in st.session_state:
@@ -54,15 +58,36 @@ if 'staff_name' not in st.session_state:
 st.set_page_config(page_title="Ghi Nhận Quà Sự Kiện", page_icon="🌻", layout="centered")
 
 css = """
-
+<style>
+    @media max-width: 768px {
+        .main-title { font-size: 24px !important; line-height: 1.3 !important; white-space: nowrap !important; }
+    }
+    .main-title {
+        background: linear-gradient(to right, #8B0000, #CC7722, #FFB300);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: left; font-size: 32px; font-weight: bold; margin-bottom: 20px;
+    }
+    .question-text {
+        background: linear-gradient(to right, #D81B60, #8E24AA);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 18px; font-weight: 600; margin-bottom: 10px;
+    }
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(to right, #D81B60, #8E24AA) !important;
+        color: white !important; border: none !important;
+    }
+</style>
 """
 st.markdown(css, unsafe_allow_html=True)
 
 # --- MÀN HÌNH ĐĂNG NHẬP ---
 if not st.session_state['logged_in']:
-    st.markdown('HỆ THỐNG GHI NHẬNNHẬN QUÀ TẶNG MYÊU SHOW', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">HỆ THỐNG GHI NHẬN<br>NHẬN QUÀ MYÊU SHOW</div>', unsafe_allow_html=True)
     password = st.text_input("Vui lòng nhập mã truy cập của bạn:", type="password")
 
+    # M tạo 1 danh sách các pass hợp lệ ở đây
     danh_sach_pass_hop_le = {
         "PassCuaAn2026": "An",
         "TrangNhanQua!": "Trang",
@@ -70,14 +95,16 @@ if not st.session_state['logged_in']:
     }
 
     if st.button("Vào hệ thống", type="primary"):
+        # Kiểm tra xem pass nhập vào có nằm trong danh sách không
         if password in danh_sach_pass_hop_le:
+            # Lấy tên staff tương ứng với pass đó
             st.session_state['staff_name'] = danh_sach_pass_hop_le[password]
             st.session_state['logged_in'] = True
             st.rerun()
         else:
             st.error("Sai password rồi nha!")
 
-# --- MÀN HÌNH CHÍNH ---
+# --- MÀN HÌNH CHÍNH (SAU KHI ĐĂNG NHẬP) ---
 else:
     col1, col2 = st.columns([8, 2])
     with col2:
@@ -86,11 +113,11 @@ else:
             st.session_state['staff_name'] = ""
             st.rerun()
 
-    st.markdown('NHẬN QUÀ TỪ 🌻MYÊU🌻', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">NHẬN QUÀ TỪ 🌻MYÊU🌻</div>', unsafe_allow_html=True)
     st.write(f"Đang trực hệ thống: **{st.session_state['staff_name']}**")
     st.divider()
 
-    st.markdown('Mình xin số ghế của bạn nha', unsafe_allow_html=True)
+    st.markdown('<div class="question-text">Mình xin số ghế của bạn nha</div>', unsafe_allow_html=True)
     seat_num = st.text_input("Nhập số ghế (VD: C6)")
     photo = st.camera_input("Chụp lại tấm hình")
 
@@ -100,23 +127,28 @@ else:
         elif photo is None:
             st.warning("Vui lòng chụp lại hình làm chứng minh nha!")
         else:
+            # Hiển thị loading spinner cho staff biết hệ thống đang xử lý
             with st.spinner("Đang lưu dữ liệu lên hệ thống..."):
                 try:
+                    # 1. Đặt tên hình trùng với số ghế (VD: C6.jpg)
                     file_name = f"{seat_num.upper()}.jpg"
 
-                    # 1. Bắn hình lên Drive qua link Apps Script
+                    # 2. Bắn hình lên Google Drive lấy link qua Apps Script
                     img_url = upload_image_to_gdrive_script(photo.getvalue(), file_name)
 
                     if img_url:
-                        # 2. Ghi data vào Google Sheets
+                        # 3. Bắn data vào Google Sheets
                         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
                         creds = get_credentials()
                         client = gspread.authorize(creds)
                         sheet = client.open_by_key(SHEET_ID).worksheet("Sheet1")
+
+                        # Dùng append_row để thêm 1 dòng mới tinh
                         sheet.append_row([timestamp, st.session_state['staff_name'], seat_num.upper(), img_url])
 
                         st.success(f"🎉 Hệ thống đã ghi nhận thành công cho ghế {seat_num.upper()}!")
                     else:
-                        st.error("Lỗi khi up hình lên Drive. Có thể do nghẽn mạng, m thử lại xíu nha!")
+                        st.error("Lỗi khi tải hình ảnh lên server. Vui lòng thử lại!")
                 except Exception as e:
-                    st.error(f"Lỗi: {e}")
+                    st.error(f"Có lỗi xảy ra: {e}")
