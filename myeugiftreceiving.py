@@ -2,6 +2,8 @@ import streamlit as st
 import gspread
 import requests
 import base64
+import io
+from PIL import Image
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
@@ -24,21 +26,34 @@ SHEET_ID = "1ce2iU7qzr9PUoGMorlIaNMYb3KDGizmhiIRquWN8dOE"
 # DÁN CÁI LINK WEB APP CỦA GOOGLE APPS SCRIPT VÀO ĐÂY NHA:
 LINK_WEB_APP = "https://script.google.com/macros/s/AKfycbw-3bA7lerOMn8anUNs87onotPwcIawgG7660GOVQCi6FhqeKz-7FqyixdvUDX5Z6JA/exec"
 
-# --- HÀM UPLOAD ẢNH LÊN GOOGLE DRIVE (QUA APPS SCRIPT) ---
-def upload_image_to_gdrive_script(image_bytes, filename):
+# --- HÀM NÉN ẢNH & UPLOAD LÊN GOOGLE DRIVE (QUA APPS SCRIPT) ---
+def upload_image_to_gdrive_script(photo_file, filename):
     try:
-        # Chuyển hình thành chuỗi mã hóa để bắn qua mạng
-        encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+        # 1. ÉP CÂN ẢNH BẰNG PILLOW
+        img = Image.open(photo_file)
+        
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+            
+        # Thu nhỏ ảnh cho nhẹ (tối đa 1024x1024, giữ đúng tỷ lệ gốc)
+        img.thumbnail((1024, 1024))
+        
+        # Lưu vào vùng nhớ đệm, ép chuẩn JPEG, quality 70%
+        compressed_io = io.BytesIO()
+        img.save(compressed_io, format='JPEG', quality=70)
+        compressed_bytes = compressed_io.getvalue()
+
+        # 2. BẮN ẢNH QUA GOOGLE SCRIPT
+        encoded_image = base64.b64encode(compressed_bytes).decode('utf-8')
         payload = {
             "fileData": encoded_image,
             "contentType": "image/jpeg",
             "filename": filename
         }
-        # Bắn dữ liệu lên link script
+        
         response = requests.post(LINK_WEB_APP, data=payload)
         result = response.text
         
-        # Nếu kết quả trả về có chứa link http nghĩa là up thành công
         if result.startswith("http"):
             return result
         else:
@@ -135,8 +150,8 @@ else:
                     # 1. Đặt tên hình trùng với số ghế (VD: C6.jpg)
                     file_name = f"{seat_num.upper()}.jpg"
 
-                    # 2. Bắn hình lên Google Drive lấy link qua Apps Script
-                    img_url = upload_image_to_gdrive_script(photo.getvalue(), file_name)
+                    # 2. Truyền thẳng file photo vào hàm nén ảnh và bắn lên Drive
+                    img_url = upload_image_to_gdrive_script(photo, file_name)
 
                     if img_url:
                         # 3. Bắn data vào Google Sheets
