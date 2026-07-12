@@ -27,7 +27,7 @@ def get_gsheets_client():
     return gspread.authorize(creds)
 
 # Điền ID của file Google Sheets vào đây (lấy trên thanh URL của trình duyệt)
-SHEET_ID = "dán_ID_file_google_sheets_vào_đây"
+SHEET_ID = "1ce2iU7qzr9PUoGMorlIaNMYb3KDGizmhiIRquWN8dOE"
 
 # --- HÀM UPLOAD ẢNH LÊN IMGBB ---
 def upload_image_to_imgbb(image_bytes):
@@ -80,16 +80,25 @@ st.markdown(css, unsafe_allow_html=True)
 
 # --- MÀN HÌNH ĐĂNG NHẬP ---
 if not st.session_state['logged_in']:
-    st.markdown('<div class="main-title">HỆ THỐNG GHI NHẬN<br>SỰ KIÊN MYÊU</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">HỆ THỐNG GHI NHẬN<br>NHẬN QUÀ TẶNG MYÊU SHOW</div>', unsafe_allow_html=True)
     password = st.text_input("Vui lòng nhập mã truy cập của bạn:", type="password")
 
+    # M tạo 1 danh sách các pass hợp lệ ở đây (ví dụ cấp cho An, Trang, Phuong)
+    danh_sach_pass_hop_le = {
+        "PassCuaAn2026": "An",
+        "TrangNhanQua!": "Trang",
+        "0519": "Phương"
+    }
+
     if st.button("Vào hệ thống", type="primary"):
-        if password.startswith("Giftreceiver-"):
-            st.session_state['staff_name'] = password.replace("Giftreceiver-", "").strip()
+        # Kiểm tra xem pass nhập vào có nằm trong danh sách không
+        if password in danh_sach_pass_hop_le:
+            # Lấy tên staff tương ứng với pass đó
+            st.session_state['staff_name'] = danh_sach_pass_hop_le[password]
             st.session_state['logged_in'] = True
             st.rerun()
         else:
-            st.error("Sai cú pháp hoặc sai password!")
+            st.error("Sai password rồi nha!")
 
 # --- MÀN HÌNH CHÍNH (SAU KHI ĐĂNG NHẬP) ---
 else:
