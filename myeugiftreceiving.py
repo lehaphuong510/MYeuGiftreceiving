@@ -22,28 +22,20 @@ def get_credentials():
 
 # ID CỦA SHEETS VÀ LINK WEB APP CỦA DRIVE
 SHEET_ID = "1ce2iU7qzr9PUoGMorlIaNMYb3KDGizmhiIRquWN8dOE"
-
-# DÁN CÁI LINK WEB APP CỦA GOOGLE APPS SCRIPT VÀO ĐÂY NHA:
 LINK_WEB_APP = "https://script.google.com/macros/s/AKfycbw-3bA7lerOMn8anUNs87onotPwcIawgG7660GOVQCi6FhqeKz-7FqyixdvUDX5Z6JA/exec"
 
 # --- HÀM NÉN ẢNH & UPLOAD LÊN GOOGLE DRIVE (QUA APPS SCRIPT) ---
 def upload_image_to_gdrive_script(photo_file, filename):
     try:
-        # 1. ÉP CÂN ẢNH BẰNG PILLOW
         img = Image.open(photo_file)
-        
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
             
-        # Thu nhỏ ảnh cho nhẹ (tối đa 1024x1024, giữ đúng tỷ lệ gốc)
         img.thumbnail((1024, 1024))
-        
-        # Lưu vào vùng nhớ đệm, ép chuẩn JPEG, quality 70%
         compressed_io = io.BytesIO()
         img.save(compressed_io, format='JPEG', quality=70)
         compressed_bytes = compressed_io.getvalue()
 
-        # 2. BẮN ẢNH QUA GOOGLE SCRIPT
         encoded_image = base64.b64encode(compressed_bytes).decode('utf-8')
         payload = {
             "fileData": encoded_image,
@@ -102,7 +94,6 @@ if not st.session_state['logged_in']:
     st.markdown('<div class="main-title">HỆ THỐNG GHI NHẬN<br>NHẬN QUÀ MYÊU SHOW</div>', unsafe_allow_html=True)
     password = st.text_input("Vui lòng nhập mã truy cập của bạn:", type="password")
 
-    # M tạo 1 danh sách các pass hợp lệ ở đây
     danh_sach_pass_hop_le = {
         "PassCuaAn2026": "An",
         "TrangNhanQua!": "Trang",
@@ -110,9 +101,7 @@ if not st.session_state['logged_in']:
     }
 
     if st.button("Vào hệ thống", type="primary"):
-        # Kiểm tra xem pass nhập vào có nằm trong danh sách không
         if password in danh_sach_pass_hop_le:
-            # Lấy tên staff tương ứng với pass đó
             st.session_state['staff_name'] = danh_sach_pass_hop_le[password]
             st.session_state['logged_in'] = True
             st.rerun()
@@ -133,39 +122,47 @@ else:
     st.divider()
 
     st.markdown('<div class="question-text">Mình xin số ghế của bạn nha</div>', unsafe_allow_html=True)
-    seat_num = st.text_input("Nhập số ghế (VD: C6)")
+    seat_num = st.text_input("Nhập số ghế (VD: C6) hoặc SĐT (VD: 09xxxx)")
     
-    # Dùng file_uploader nhưng ép chỉ nhận hình ảnh, trên đt sẽ tự gợi ý bật Camera
+    st.markdown('<div style="font-size: 14px; margin-top: -10px; margin-bottom: 5px; color: gray;">Email (chỉ bắt buộc trong trường hợp khách vãng lai)</div>', unsafe_allow_html=True)
+    user_email = st.text_input("Nhập email", key="email_input")
+    
     photo = st.file_uploader("Chụp hoặc tải ảnh lên", type=['png', 'jpg', 'jpeg'], accept_multiple_files=False)
 
     if st.button("Đã nhận quà", type="primary"):
+        # Logic: Chuỗi từ 9 ký tự trở lên sẽ bị coi là SĐT
+        is_sdt = len(seat_num.strip()) >= 9 
+        
         if not seat_num:
-            st.warning("Bạn quên nhập số ghế kìa!")
+            st.warning("Bạn quên nhập số ghế/SĐT kìa!")
+        elif is_sdt and not user_email.strip():
+            st.error("Trường hợp nhập SĐT khách vãng lai, vui lòng điền thêm Email vào ô phía dưới nha!")
         elif photo is None:
             st.warning("Vui lòng chụp lại hình làm chứng minh nha!")
         else:
-            # Hiển thị loading spinner cho staff biết hệ thống đang xử lý
             with st.spinner("Đang lưu dữ liệu lên hệ thống..."):
                 try:
-                    # 1. Đặt tên hình trùng với số ghế (VD: C6.jpg)
-                    file_name = f"{seat_num.upper()}.jpg"
+                    seat_normalized = seat_num.upper().strip()
+                    email_normalized = user_email.strip()
+                    
+                    # Đặt tên hình an toàn (thay ký tự lạ bằng dấu _)
+                    safe_filename = seat_normalized.replace("/", "_").replace("\\", "_")
+                    file_name = f"{safe_filename}.jpg"
 
-                    # 2. Truyền thẳng file photo vào hàm nén ảnh và bắn lên Drive
                     img_url = upload_image_to_gdrive_script(photo, file_name)
 
                     if img_url:
-                        # 3. Bắn data vào Google Sheets
-                        # Lấy giờ quốc tế (utcnow) cộng thêm 7 tiếng ra giờ Việt Nam
                         timestamp = (datetime.utcnow() + timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
 
                         creds = get_credentials()
                         client = gspread.authorize(creds)
                         sheet = client.open_by_key(SHEET_ID).worksheet("Sheet1")
 
-                        # Dùng append_row để thêm 1 dòng mới tinh
-                        sheet.append_row([timestamp, st.session_state['staff_name'], seat_num.upper(), img_url])
+                        # Ném vào Sheet 7 cột theo đúng chuẩn mới
+                        seat_for_sheet = f"'{seat_normalized}"
+                        sheet.append_row([timestamp, st.session_state['staff_name'], seat_for_sheet, email_normalized, img_url, "", ""])
 
-                        st.success(f"🎉 Hệ thống đã ghi nhận thành công cho ghế {seat_num.upper()}!")
+                        st.success(f"🎉 Hệ thống đã ghi nhận thành công cho: {seat_normalized}!")
                     else:
                         st.error("Lỗi khi tải hình ảnh lên server. Vui lòng thử lại!")
                 except Exception as e:
