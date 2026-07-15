@@ -55,11 +55,23 @@ def upload_image_to_gdrive_script(photo_file, filename):
         st.error(f"Lỗi hệ thống khi up hình: {e}")
         return None
 
-# --- CACHE & STATE QUẢN LÝ ĐĂNG NHẬP ---
+# --- CACHE & STATE QUẢN LÝ ĐĂNG NHẬP VÀ FORM UI ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 if 'staff_name' not in st.session_state:
     st.session_state['staff_name'] = ""
+
+# Biến tạm để reset trắng các ô nhập liệu và hình ảnh
+if 'seat_input' not in st.session_state:
+    st.session_state['seat_input'] = ""
+if 'email_input' not in st.session_state:
+    st.session_state['email_input'] = ""
+if 'uploader_key' not in st.session_state:
+    st.session_state['uploader_key'] = 0 # Dùng cái này để ép reset ô chọn ảnh
+if 'success_msg' not in st.session_state:
+    st.session_state['success_msg'] = ""
+if 'error_msg' not in st.session_state:
+    st.session_state['error_msg'] = ""
 
 # --- CẤU HÌNH GIAO DIỆN & CSS ---
 st.set_page_config(page_title="Ghi Nhận Quà Sự Kiện", page_icon="🌻", layout="centered")
@@ -97,7 +109,7 @@ if not st.session_state['logged_in']:
     danh_sach_pass_hop_le = {
         "PassCuaAn2026": "An",
         "TrangNhanQua!": "Trang",
-        "0519": "Phương"
+        "0519": "Lê Phương" # Đồng bộ tên Admin
     }
 
     if st.button("Vào hệ thống", type="primary"):
@@ -121,22 +133,32 @@ else:
     st.write(f"Đang trực hệ thống: **{st.session_state['staff_name']}**")
     st.divider()
 
+    # Hiển thị thông báo CỦA LẦN BẤM TRƯỚC ĐÓ (nếu có)
+    if st.session_state['success_msg']:
+        st.success(st.session_state['success_msg'])
+        st.session_state['success_msg'] = "" # Reset để không hiện mãi
+        
+    if st.session_state['error_msg']:
+        st.error(st.session_state['error_msg'])
+        st.session_state['error_msg'] = ""
+
+    # --- KHU VỰC NHẬP LIỆU ---
     st.markdown('<div class="question-text">Mình xin số ghế của bạn nha</div>', unsafe_allow_html=True)
-    seat_num = st.text_input("Nhập số ghế (VD: C6) hoặc SĐT (VD: 09xxxx)")
+    seat_num = st.text_input("Nhập số ghế (VD: C6) hoặc SĐT (VD: 09xxxx)", key="seat_input")
     
     st.markdown('<div style="font-size: 14px; margin-top: -10px; margin-bottom: 5px; color: gray;">Email (chỉ bắt buộc trong trường hợp khách vãng lai)</div>', unsafe_allow_html=True)
     user_email = st.text_input("Nhập email", key="email_input")
     
-    photo = st.file_uploader("Chụp hoặc tải ảnh lên", type=['png', 'jpg', 'jpeg'], accept_multiple_files=False)
+    # Key động để ép Streamlit xóa ảnh sau khi rerun
+    photo = st.file_uploader("Chụp hoặc tải ảnh lên", type=['png', 'jpg', 'jpeg'], accept_multiple_files=False, key=f"photo_upload_{st.session_state['uploader_key']}")
 
     if st.button("Đã nhận quà", type="primary"):
-        # Logic: Chuỗi từ 9 ký tự trở lên sẽ bị coi là SĐT
         is_sdt = len(seat_num.strip()) >= 9 
         
         if not seat_num:
             st.warning("Bạn quên nhập số ghế/SĐT kìa!")
         elif is_sdt and not user_email.strip():
-            st.error("Trường hợp nhập SĐT khách vãng lai, vui lòng điền thêm Email vào ô phía dưới nha!")
+            st.warning("Trường hợp nhập SĐT khách vãng lai, vui lòng điền thêm Email vào ô phía dưới nha!")
         elif photo is None:
             st.warning("Vui lòng chụp lại hình làm chứng minh nha!")
         else:
@@ -145,7 +167,6 @@ else:
                     seat_normalized = seat_num.upper().strip()
                     email_normalized = user_email.strip()
                     
-                    # Đặt tên hình an toàn (thay ký tự lạ bằng dấu _)
                     safe_filename = seat_normalized.replace("/", "_").replace("\\", "_")
                     file_name = f"{safe_filename}.jpg"
 
@@ -158,12 +179,19 @@ else:
                         client = gspread.authorize(creds)
                         sheet = client.open_by_key(SHEET_ID).worksheet("Sheet1")
 
-                        # Ném vào Sheet 7 cột theo đúng chuẩn mới
                         seat_for_sheet = f"'{seat_normalized}"
                         sheet.append_row([timestamp, st.session_state['staff_name'], seat_for_sheet, email_normalized, img_url, "", ""])
 
-                        st.success(f"🎉 Hệ thống đã ghi nhận thành công cho: {seat_normalized}!")
+                        # Ghi nhận thành công, set message và XÓA TRẮNG form
+                        st.session_state['success_msg'] = f"🎉 Hệ thống đã ghi nhận thành công cho: {seat_normalized}!"
+                        st.session_state['seat_input'] = ""
+                        st.session_state['email_input'] = ""
+                        st.session_state['uploader_key'] += 1 # Tăng số để đổi key -> reset ảnh
+                        
+                        st.rerun() # Tải lại trang để áp dụng việc xóa trắng
                     else:
-                        st.error("Lỗi khi tải hình ảnh lên server. Vui lòng thử lại!")
+                        st.session_state['error_msg'] = "Lỗi khi tải hình ảnh lên server. Vui lòng thử lại!"
+                        st.rerun()
                 except Exception as e:
-                    st.error(f"Có lỗi xảy ra: {e}")
+                    st.session_state['error_msg'] = f"Có lỗi xảy ra: {e}"
+                    st.rerun()
