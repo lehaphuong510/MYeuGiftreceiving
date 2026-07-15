@@ -91,7 +91,7 @@ st.markdown(css, unsafe_allow_html=True)
 
 # --- MÀN HÌNH ĐĂNG NHẬP ---
 if not st.session_state['logged_in']:
-    st.markdown('<div class="main-title">Đăng nhập Trạm Nhập Liệu</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">Đăng nhập Trạm Nhận Quà</div>', unsafe_allow_html=True)
     password = st.text_input("Vui lòng nhập mã truy cập của bạn:", type="password")
 
     danh_sach_pass_hop_le = {
