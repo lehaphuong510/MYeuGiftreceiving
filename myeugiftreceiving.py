@@ -67,7 +67,7 @@ if 'seat_input' not in st.session_state:
 if 'email_input' not in st.session_state:
     st.session_state['email_input'] = ""
 if 'uploader_key' not in st.session_state:
-    st.session_state['uploader_key'] = 0 # Dùng cái này để ép reset ô chọn ảnh
+    st.session_state['uploader_key'] = 0
 if 'success_msg' not in st.session_state:
     st.session_state['success_msg'] = ""
 if 'error_msg' not in st.session_state:
@@ -109,7 +109,7 @@ if not st.session_state['logged_in']:
     danh_sach_pass_hop_le = {
         "PassCuaAn2026": "An",
         "TrangNhanQua!": "Trang",
-        "0519": "Lê Phương" # Đồng bộ tên Admin
+        "0519": "Lê Phương"
     }
 
     if st.button("Vào hệ thống", type="primary"):
@@ -144,10 +144,12 @@ else:
 
     # --- KHU VỰC NHẬP LIỆU ---
     st.markdown('<div class="question-text">Mình xin số ghế của bạn nha</div>', unsafe_allow_html=True)
-    seat_num = st.text_input("Nhập số ghế (VD: C6) hoặc SĐT (VD: 09xxxx)", key="seat_input")
+    
+    # FIX LỖI: Dùng thuộc tính value thay vì key để Streamlit cho phép tự do thay đổi
+    seat_num = st.text_input("Nhập số ghế (VD: C6) hoặc SĐT (VD: 09xxxx)", value=st.session_state['seat_input'])
     
     st.markdown('<div style="font-size: 14px; margin-top: -10px; margin-bottom: 5px; color: gray;">Email (chỉ bắt buộc trong trường hợp khách vãng lai)</div>', unsafe_allow_html=True)
-    user_email = st.text_input("Nhập email", key="email_input")
+    user_email = st.text_input("Nhập email", value=st.session_state['email_input'])
     
     # Key động để ép Streamlit xóa ảnh sau khi rerun
     photo = st.file_uploader("Chụp hoặc tải ảnh lên", type=['png', 'jpg', 'jpeg'], accept_multiple_files=False, key=f"photo_upload_{st.session_state['uploader_key']}")
@@ -182,7 +184,7 @@ else:
                         seat_for_sheet = f"'{seat_normalized}"
                         sheet.append_row([timestamp, st.session_state['staff_name'], seat_for_sheet, email_normalized, img_url, "", ""])
 
-                        # Ghi nhận thành công, set message và XÓA TRẮNG form
+                        # Ghi nhận thành công, set message và XÓA TRẮNG form vào state
                         st.session_state['success_msg'] = f"🎉 Hệ thống đã ghi nhận thành công cho: {seat_normalized}!"
                         st.session_state['seat_input'] = ""
                         st.session_state['email_input'] = ""
