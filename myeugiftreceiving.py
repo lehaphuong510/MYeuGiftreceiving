@@ -61,13 +61,10 @@ if 'logged_in' not in st.session_state:
 if 'staff_name' not in st.session_state:
     st.session_state['staff_name'] = ""
 
-# Biến tạm để reset trắng các ô nhập liệu và hình ảnh
-if 'seat_input' not in st.session_state:
-    st.session_state['seat_input'] = ""
-if 'email_input' not in st.session_state:
-    st.session_state['email_input'] = ""
-if 'uploader_key' not in st.session_state:
-    st.session_state['uploader_key'] = 0
+# Dùng key động để reset toàn bộ form (Text + Ảnh)
+if 'form_key' not in st.session_state:
+    st.session_state['form_key'] = 0
+
 if 'success_msg' not in st.session_state:
     st.session_state['success_msg'] = ""
 if 'error_msg' not in st.session_state:
@@ -136,23 +133,22 @@ else:
     # Hiển thị thông báo CỦA LẦN BẤM TRƯỚC ĐÓ (nếu có)
     if st.session_state['success_msg']:
         st.success(st.session_state['success_msg'])
-        st.session_state['success_msg'] = "" # Reset để không hiện mãi
+        st.session_state['success_msg'] = "" 
         
     if st.session_state['error_msg']:
         st.error(st.session_state['error_msg'])
         st.session_state['error_msg'] = ""
 
-    # --- KHU VỰC NHẬP LIỆU ---
+    # --- KHU VỰC NHẬP LIỆU (ÉP KEY ĐỘNG) ---
     st.markdown('<div class="question-text">Mình xin số ghế của bạn nha</div>', unsafe_allow_html=True)
     
-    # FIX LỖI: Dùng thuộc tính value thay vì key để Streamlit cho phép tự do thay đổi
-    seat_num = st.text_input("Nhập số ghế (VD: C6) hoặc SĐT (VD: 09xxxx)", value=st.session_state['seat_input'])
+    # Ép key động để nó sinh ra ô text mới tinh sau mỗi lần submit
+    seat_num = st.text_input("Nhập số ghế (VD: C6) hoặc SĐT (VD: 09xxxx)", key=f"seat_{st.session_state['form_key']}")
     
     st.markdown('<div style="font-size: 14px; margin-top: -10px; margin-bottom: 5px; color: gray;">Email (chỉ bắt buộc trong trường hợp khách vãng lai)</div>', unsafe_allow_html=True)
-    user_email = st.text_input("Nhập email", value=st.session_state['email_input'])
+    user_email = st.text_input("Nhập email", key=f"email_{st.session_state['form_key']}")
     
-    # Key động để ép Streamlit xóa ảnh sau khi rerun
-    photo = st.file_uploader("Chụp hoặc tải ảnh lên", type=['png', 'jpg', 'jpeg'], accept_multiple_files=False, key=f"photo_upload_{st.session_state['uploader_key']}")
+    photo = st.file_uploader("Chụp hoặc tải ảnh lên", type=['png', 'jpg', 'jpeg'], accept_multiple_files=False, key=f"photo_{st.session_state['form_key']}")
 
     if st.button("Đã nhận quà", type="primary"):
         is_sdt = len(seat_num.strip()) >= 9 
@@ -184,13 +180,13 @@ else:
                         seat_for_sheet = f"'{seat_normalized}"
                         sheet.append_row([timestamp, st.session_state['staff_name'], seat_for_sheet, email_normalized, img_url, "", ""])
 
-                        # Ghi nhận thành công, set message và XÓA TRẮNG form vào state
+                        # Ghi nhận thành công
                         st.session_state['success_msg'] = f"🎉 Hệ thống đã ghi nhận thành công cho: {seat_normalized}!"
-                        st.session_state['seat_input'] = ""
-                        st.session_state['email_input'] = ""
-                        st.session_state['uploader_key'] += 1 # Tăng số để đổi key -> reset ảnh
                         
-                        st.rerun() # Tải lại trang để áp dụng việc xóa trắng
+                        # TĂNG KEY ĐỂ RESET FORM SẠCH SẼ (Cả Text + Hình)
+                        st.session_state['form_key'] += 1 
+                        
+                        st.rerun() 
                     else:
                         st.session_state['error_msg'] = "Lỗi khi tải hình ảnh lên server. Vui lòng thử lại!"
                         st.rerun()
