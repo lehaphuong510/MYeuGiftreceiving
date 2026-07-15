@@ -20,11 +20,10 @@ def get_credentials():
     )
     return creds
 
-# ID CỦA SHEETS VÀ LINK WEB APP CỦA DRIVE
 SHEET_ID = "1ce2iU7qzr9PUoGMorlIaNMYb3KDGizmhiIRquWN8dOE"
 LINK_WEB_APP = "https://script.google.com/macros/s/AKfycbw-3bA7lerOMn8anUNs87onotPwcIawgG7660GOVQCi6FhqeKz-7FqyixdvUDX5Z6JA/exec"
 
-# --- HÀM NÉN ẢNH & UPLOAD LÊN GOOGLE DRIVE (QUA APPS SCRIPT) ---
+# --- HÀM NÉN ẢNH & UPLOAD LÊN DRIVE ---
 def upload_image_to_gdrive_script(photo_file, filename):
     try:
         img = Image.open(photo_file)
@@ -60,11 +59,8 @@ if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 if 'staff_name' not in st.session_state:
     st.session_state['staff_name'] = ""
-
-# Dùng key động để reset toàn bộ form (Text + Ảnh)
 if 'form_key' not in st.session_state:
     st.session_state['form_key'] = 0
-
 if 'success_msg' not in st.session_state:
     st.session_state['success_msg'] = ""
 if 'error_msg' not in st.session_state:
@@ -117,7 +113,7 @@ if not st.session_state['logged_in']:
         else:
             st.error("Sai password rồi nha!")
 
-# --- MÀN HÌNH CHÍNH (SAU KHI ĐĂNG NHẬP) ---
+# --- MÀN HÌNH CHÍNH ---
 else:
     col1, col2 = st.columns([8, 2])
     with col2:
@@ -130,7 +126,6 @@ else:
     st.write(f"Đang trực hệ thống: **{st.session_state['staff_name']}**")
     st.divider()
 
-    # Hiển thị thông báo CỦA LẦN BẤM TRƯỚC ĐÓ (nếu có)
     if st.session_state['success_msg']:
         st.success(st.session_state['success_msg'])
         st.session_state['success_msg'] = "" 
@@ -139,10 +134,7 @@ else:
         st.error(st.session_state['error_msg'])
         st.session_state['error_msg'] = ""
 
-    # --- KHU VỰC NHẬP LIỆU (ÉP KEY ĐỘNG) ---
     st.markdown('<div class="question-text">Mình xin số ghế của bạn nha</div>', unsafe_allow_html=True)
-    
-    # Ép key động để nó sinh ra ô text mới tinh sau mỗi lần submit
     seat_num = st.text_input("Nhập số ghế (VD: C6) hoặc SĐT (VD: 09xxxx)", key=f"seat_{st.session_state['form_key']}")
     
     st.markdown('<div style="font-size: 14px; margin-top: -10px; margin-bottom: 5px; color: gray;">Email (chỉ bắt buộc trong trường hợp khách vãng lai)</div>', unsafe_allow_html=True)
@@ -180,12 +172,8 @@ else:
                         seat_for_sheet = f"'{seat_normalized}"
                         sheet.append_row([timestamp, st.session_state['staff_name'], seat_for_sheet, email_normalized, img_url, "", ""])
 
-                        # Ghi nhận thành công
                         st.session_state['success_msg'] = f"🎉 Hệ thống đã ghi nhận thành công cho: {seat_normalized}!"
-                        
-                        # TĂNG KEY ĐỂ RESET FORM SẠCH SẼ (Cả Text + Hình)
                         st.session_state['form_key'] += 1 
-                        
                         st.rerun() 
                     else:
                         st.session_state['error_msg'] = "Lỗi khi tải hình ảnh lên server. Vui lòng thử lại!"
