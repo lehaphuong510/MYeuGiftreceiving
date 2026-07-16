@@ -100,7 +100,7 @@ if not st.session_state['logged_in']:
     password = st.text_input("Vui lòng nhập mã truy cập của bạn:", type="password")
 
     danh_sach_pass_hop_le = {
-        "PassCuaAn2026": "An",
+        "161205": "Trân Lê",
         "TrangNhanQua!": "Trang",
         "0519": "Lê Phương"
     }
